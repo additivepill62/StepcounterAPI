@@ -13,7 +13,7 @@ var pool = mysql.createPool({
 });
 
 app.use(express.urlencoded({extended: true})) //ettől működik a req.body
-
+app.use(express.json()); //kommunikáció json formában
 
 app.get('/', (req, res) => {
     res.send('Welcome to the Step Counter API!');
@@ -37,10 +37,10 @@ app.post('/users/register', (req, res) =>{
     if(password !==confirm){
         return res.status(400).json({error: 'Passwords do not match'})
     }
-    //check pw strength TODO <<<-----------
+    //TODO: check pw strength (with regular expression)
 
 
-    //check if email already exists               ˇbehejettesíti az utána lévő tömböt
+    //check if email already exists               ˇbehejettesíti az utána lévő tömböt ----- SQL injection!
     pool.query('SELECT * FROM users WHERE email = ?', [email], (error, results) =>{
         if (error){
             return res.status(500).json({error: '[REGISTER email check] Database query error'})
@@ -54,12 +54,61 @@ app.post('/users/register', (req, res) =>{
         if(error){
             return res.status(500).json({error: '[REGISTER DB INSERT] Database insertion error; msg: ' +error})
         }
-        res.status(201).json({message: '[REGISTER DB INSERT] User registered successfully'})
-    })
+        
+        
+            
+            return res.status(201).json({message: '[REGISTER DB INSERT] User registered successfully'})
+        
+    });
+
+    //TODO: send logged user data to frontend
     })
 })
 
 //login
+app.post('/users/login', (req, res) =>{
+    const {email, passwd} = req.body
+    //VALIDATION
+
+    //CHECK FOR MISSING FIELDS
+    if (!email || !passwd){
+        return res.status(400).json({error: '[LOGIN] Missing required fields'})
+    }
+
+    //LOGIN email+pw check
+    pool.query('SELECT * FROM users WHERE email=? AND password=SHA1(?)', [email, passwd],(error, results)=>{
+        if (error){
+            return res.status(500).json({error: '[LOGIN email+pw check] Database query error'+error})
+        }
+        // if user doesn't exists with this email and/or password  
+        if(results.length == 0){
+            return res.status(400).json({error: '[LOGIN] Invalid credentials!'})
+        }
+
+        //LOGIN ban check
+        if(results[0].is_active == 0){
+            return res.status(400).json({error: '[LOGIN ban check] This user has been banned by admin!'})
+        }       
+
+        const loggedUser = {
+            ID: results[0].ID,
+            name: results[0].name,
+            email: results[0].email,
+            role: results[0].role
+        }
+        //LOGIN UPDATE TIMESTAMP
+        pool.query('UPDATE users SET last_login=CURRENT_TIMESTAMP, login_count=login_count+1 WHERE ID=?' , [loggedUser.ID], (error, results)=>{
+            if (error){
+            return res.status(500).json({error: '[LOGIN UPDATE TIMESTAMP] Database query error'})
+            }
+            //LOGIN success
+            return res.status(200).json({message: '[LOGIN success] You are successfully logged in! ', loggedUser})
+        })
+
+    })
+
+
+})
 
 //logout
 
