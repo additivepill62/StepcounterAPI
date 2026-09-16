@@ -1,4 +1,7 @@
 const express = require("express")
+const cors = require('cors')
+
+
 const mysql = require("mysql")
 const app = express();
 const port = 3000
@@ -11,7 +14,7 @@ var pool = mysql.createPool({
     port: 3307,
     database: "stepcounter"
 });
-
+app.use(cors()) //Access-Control-Allow-Origin
 app.use(express.urlencoded({extended: true})) //ettől működik a req.body
 app.use(express.json()); //kommunikáció json formában
 
