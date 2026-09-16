@@ -2,7 +2,7 @@ const express = require("express")
 const mysql = require("mysql")
 const app = express();
 const port = 3000
-
+var sha1 = require('sha1')
 var pool = mysql.createPool({
     connectionLimit: 10,
     host: "localhost",
@@ -30,7 +30,7 @@ app.post('/users/register', (req, res) =>{
     //VALIDATE  
     //check for missing fields
     if(!name || ! email || !password ||!confirm){
-        return res.status(400).json({error: '[REGISTER] Missing required fields'})
+        return res.status(400).json({error: '[REGISTERMissingFields] Missing required fields'})
     }
 
     //check if pws match
@@ -43,25 +43,25 @@ app.post('/users/register', (req, res) =>{
     //check if email already exists               ˇbehejettesíti az utána lévő tömböt ----- SQL injection!
     pool.query('SELECT * FROM users WHERE email = ?', [email], (error, results) =>{
         if (error){
-            return res.status(500).json({error: '[REGISTER email check] Database query error'})
+            return res.status(500).json({error: '[REGISTEREmailCheckDBError] Database query error'})
         }
         if(results.length>0){
-            return res.status(400).json({ error: '[REGISTER email check] This e-mail already exists'})
+            return res.status(400).json({ error: '[REGISTEREmailCheckExistError] This e-mail already exists'})
         }
 
         
     pool.query('INSERT INTO users (name, email, password, role) VALUES (?, ?, SHA1(?), "user")', [name, email, password], (error, results) => {
         if(error){
-            return res.status(500).json({error: '[REGISTER DB INSERT] Database insertion error; msg: ' +error})
+            return res.status(500).json({error: '[REGISTERDBInsertError] Database insertion error; msg: ' +error})
         }
         
         
             
-            return res.status(201).json({message: '[REGISTER DB INSERT] User registered successfully'})
+            return res.status(201).json({message: '[REGISTERDBInsertSuccess] User registered successfully'})
         
     });
 
-    //TODO: send logged user data to frontend
+   
     })
 })
 
@@ -72,22 +72,22 @@ app.post('/users/login', (req, res) =>{
 
     //CHECK FOR MISSING FIELDS
     if (!email || !passwd){
-        return res.status(400).json({error: '[LOGIN] Missing required fields'})
+        return res.status(400).json({error: '[LOGINFieldError] Missing required fields'})
     }
 
     //LOGIN email+pw check
     pool.query('SELECT * FROM users WHERE email=? AND password=SHA1(?)', [email, passwd],(error, results)=>{
         if (error){
-            return res.status(500).json({error: '[LOGIN email+pw check] Database query error'+error})
+            return res.status(500).json({error: '[LOGINEmailPwCheckError] Database query error'+error})
         }
         // if user doesn't exists with this email and/or password  
         if(results.length == 0){
-            return res.status(400).json({error: '[LOGIN] Invalid credentials!'})
+            return res.status(400).json({error: '[LOGINCredentialsError] Invalid credentials!'})
         }
 
         //LOGIN ban check
         if(results[0].is_active == 0){
-            return res.status(400).json({error: '[LOGIN ban check] This user has been banned by admin!'})
+            return res.status(400).json({error: '[LOGINUserHasBeenBanned] This user has been banned by admin!'})
         }       
 
         const loggedUser = {
@@ -99,10 +99,10 @@ app.post('/users/login', (req, res) =>{
         //LOGIN UPDATE TIMESTAMP
         pool.query('UPDATE users SET last_login=CURRENT_TIMESTAMP, login_count=login_count+1 WHERE ID=?' , [loggedUser.ID], (error, results)=>{
             if (error){
-            return res.status(500).json({error: '[LOGIN UPDATE TIMESTAMP] Database query error'})
+            return res.status(500).json({error: '[LOGINUpdateTimestampError] Database query error'})
             }
             //LOGIN success
-            return res.status(200).json({message: '[LOGIN success] You are successfully logged in! ', loggedUser})
+            return res.status(200).json({message: '[LOGINSuccess] You are successfully logged in! ', loggedUser})
         })
 
     })
@@ -110,10 +110,53 @@ app.post('/users/login', (req, res) =>{
 
 })
 
-//logout
+//logout - elv nem kell rá endpoint
 
 //pw change
+app.post('/users/:uid/changepassword', (req, res)=>{
+    const {oldpass, newpass, confirm} = req.body
+    const uid =req.params.uid
+    if(!oldpass || !newpass ||!confirm){
+        return res.status(400).json({error: '[CHANGEPWDBError] Missing required fields'})
+    }
+    if (newpass != confirm){
+        return res.status(400).json({error: '[CHANGEPWConfirmMatchError] The new password and the confirm does not match!'})
+    }
+    if (oldpass == newpass){
+        return res.status(400).json({error: '[CHANGEPWOldMatchError] The new and old password cannot match!'})
+    }
 
+    //TODO: newpassword strength check with regular expression
+
+
+    pool.query('SELECT * FROM users WHERE ID=?', [uid], (error, results)=>{
+        if(error){
+            return res.status(500).json({error: '[UIDDBError] Database Query Error'+error})
+        }
+        if(results.length ==0){
+            return res.status(400).json({error: '[UIDNonExistent] There\'s no user with this UID in database'})
+        }
+
+
+        const oldpassHash = sha1(oldpass)
+
+        console.log(results[0].passwd == oldpassHash)
+
+        if(results[0].password != oldpassHash){
+            return res.status(400).json({error: '[CHANGEPWOldIncorrect] The old password is not correct ' })
+        }
+    
+        //update password
+        pool.query('UPDATE users SET password=SHA1(?) WHERE ID=?', [newpass ,uid], (error, results)=>{
+            if(error){
+                return res.status(500).json({error: '[PWUpdateError] Database Query Error'})
+            }
+            res.status(200).json({message:'[PWUpdateSuccess] The password has been succesfully changed'})
+        })
+    })
+
+
+});
 //get profile
 
 //update profile
