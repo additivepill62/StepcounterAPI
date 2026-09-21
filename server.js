@@ -69,6 +69,7 @@ app.post('/users/register', (req, res) =>{
 })
 
 //login
+//TODO: időzónák lekezelése
 app.post('/users/login', (req, res) =>{
     const {email, passwd} = req.body
     //VALIDATION
@@ -94,7 +95,7 @@ app.post('/users/login', (req, res) =>{
         }       
 
         const loggedUser = {
-            ID: results[0].ID,
+            ID: results[0].id,
             name: results[0].name,
             email: results[0].email,
             role: results[0].role
@@ -107,7 +108,7 @@ app.post('/users/login', (req, res) =>{
             //LOGIN success
             return res.status(200).json({message: '[LOGINSuccess] You are successfully logged in! ', loggedUser})
         })
-
+            
     })
 
 
