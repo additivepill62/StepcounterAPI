@@ -12,7 +12,7 @@ var pool = mysql.createPool({
     user: "root",
     password: "",
     port: 3307,
-    database: "stepcounter"
+    database: "2026_stepcounter"
 });
 app.use(cors()) //Access-Control-Allow-Origin
 app.use(express.urlencoded({extended: true})) //ettől működik a req.body
@@ -160,11 +160,73 @@ app.post('/users/:uid/changepassword', (req, res)=>{
 
 
 });
+
+
+
 //get profile
+app.get('/users/:uid', (req, res)=>{
+    const uid =req.params.uid
+    if(!uid){
+        return res.status(400).json({error: '[GETProfileMissingIDError] Missing user identifier'})
+    }
+
+    pool.query('SELECT * FROM users WHERE ID=?', [uid], (error, results) =>{
+        if(error){
+            return res.status(500).json({error: '[GETProfileDBError] Database query error'})
+        }
+        //ha nincs ilyen id a táblában
+        if(results.length==0){
+            return res.status(400).json({error: '[GETProfileError] There is no user that exists with this ID'})
+        }
+let user={
+    "name": results[0].name,
+    "email": results[0].email,
+    "role": results[0].role,
+    "created_at": results[0].created_at,
+}
+
+
+        //ha van ilyen user a táblában:
+        return res.status(200).json({results: user})
+    })
+
+
+})
+
+
+
 
 //update profile
+//TODO: update profile
+
 
 //del profile
+app.delete('/users/:uid', (req, res)=>{
+    const uid = req.params.uid
+    const loggedUserId = req.body.luid
+
+    if(!uid || !loggedUserId){
+        return res.status(400).json({error: '[DELETEProfileMissingIDError] Missing user identifier'})
+    }
+    if(uid != loggedUserId){
+        
+        return res.status(400).json({error: '[DELETEUserProfilePermissionError] You don\'t have permission to delete this user'})
+    
+    }
+    pool.query('DELETE FROM users WHERE ID=?', [uid], (error, results)=>{
+        if(error){
+            return res.status(500).json({error: '[DELETEUserError] Database query error '+error})
+
+        }
+        if(results.affectedRows ==1){
+            return res.status(200).json({message: '[DELETEUserSuccess] User deleted successfully'})
+        }
+        
+        return res.status(200).json({message: '[DELETENoDeletion] No deletion occured'})
+    })
+})
+
+
 
 //STEPS ENDPOINTS -------------------------------
 //CREATE step
