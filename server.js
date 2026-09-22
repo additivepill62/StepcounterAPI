@@ -12,7 +12,8 @@ var pool = mysql.createPool({
     user: "root",
     password: "",
     port: 3307,
-    database: "2026_stepcounter"
+    database: "2026_stepcounter",
+    timezone:'Europe/Budapest'
 });
 app.use(cors()) //Access-Control-Allow-Origin
 app.use(express.urlencoded({extended: true})) //ettől működik a req.body
@@ -197,9 +198,56 @@ let user={
 
 
 
-//update profile
+//update profile (un email (lehetne még phone address description, picture.....))
 //TODO: update profile
 
+//patch: reszleges modositas
+app.patch('/users/:uid', (req, res)=>{
+    const uid = req.params.uid;
+    const {username, email, luid} = req.body
+
+    if(!uid || !username || !email || !luid){
+        return res.status(400).json({error: '[PATCHUserUpdateFieldError] Missing required fields'})
+    }
+
+    if(uid != luid){
+        return res.status(400).json({error: '[PATCHUserProfilePermissionError] You don\'t have permission to update this user\'s data'})
+    }
+
+    pool.query('SELECT * FROM users WHERE ID=?', [uid], (error, results)=>{
+        if(error){
+            return res.status(500).json({error: '[PATCHUserError] Database query error '})
+        }
+        if(results.length ==0){
+            return res.status(400).json({error: '[PATCHUserMissingError] There is no user with this ID in the Database!'})
+        }
+
+        if((username == results[0].name) && (email == results[0].email)){   
+            return res.status(200).json({message: '[PATCHUserDataUnchanged] No update occured! '})
+
+        }
+
+        pool.query('SELECT * FROM users WHERE email=? AND ID<>?', [email, uid], (error2, results2)=>{
+            if(error2){
+            return res.status(500).json({error: '[PATCHUserEmailCheck] Database query error '})
+            }
+            if (results2.length >0){
+                return res.status(400).json({error: '[PATCHEmailInUse] This email address is already in use '})
+            }
+
+
+
+            pool.query('UPDATE users SET name=?, email=?, updated_at=CURRENT_TIMESTAMP WHERE ID=?', [username, email, uid], (error3, results3)=>{
+                if(error3){
+                    return res.status(500).json({error: '[PATCHUserUpdateError] Database query error '})
+                }
+                return res.status(200).json({message: '[PATCHUserUpdateSuccess] User\'s data has been updated successfully '})
+            })
+        })
+    })
+
+
+})
 
 //del profile
 app.delete('/users/:uid', (req, res)=>{
@@ -216,7 +264,7 @@ app.delete('/users/:uid', (req, res)=>{
     }
     pool.query('DELETE FROM users WHERE ID=?', [uid], (error, results)=>{
         if(error){
-            return res.status(500).json({error: '[DELETEUserError] Database query error '+error})
+            return res.status(500).json({error: '[DELETEUserError] Database query error '})
 
         }
         if(results.affectedRows ==1){
@@ -237,21 +285,84 @@ app.delete('/users/:uid', (req, res)=>{
 
 
 //ADMIN ENDPOINTS -------------------------------
-//get all users
-app.get('/admin/users', (req, res) => {
-    pool.query('SELECT * FROM users', (error, results) => {
+// get all users
+app.post('/admin/users', (req, res) =>{
+    const luid = req.body. luid;
+
+    if (!luid) {
+        return res.status(400).json({ error: '[POSTUsersFieldError] Missing required fields!' });
+    }
+    // megnézzük, hogy aki hívja ezt az endpointot, az admin-e?
+    pool.query('SELECT * FROM users WHERE ID =? ', [luid], (error, results1) => {
         if (error) {
-            console.error('Error fetching users:', error);
-            res.status(500).json({ '[GET * users] Database query error: ': error });
-        } else {
-            res.status(200).json(results);
+            return res.status(500).json({ error:'[POSTUsersDBIDError] Database query error ' });
         }
+        if (results1.length == 0) {
+            return res.status(400).json({ error: '[POSTUsersIDNonexistent] User with this ID doesn\'t exist!' });
+        }
+        if (results1[0].role != 'admin') {
+            return res.status(400).json({ error: '[POSTUsersPermissionDenied] You don\t have permission to change this user status!' });
+        }
+        pool.query('SELECT * FROM users', (error, results) => {
+        if (error) {
+        return res.status(500).json({ error: '[POSTUsersDBError] Database query error' });
+
+        }
+
+        return res.status(200).json(results);
+
+        });
     });
 });
+
     
 //stats
 //deny user
+app.post('/admin/status', (req, res)=>{
+    const {uid, luid} = req.body
 
+    
+
+    if(!uid || !luid){
+         return res.status(400).json({error: '[POSTDenyUser] Missing required fields '})
+    }
+
+
+    pool.query('SELECT * FROM users WHERE ID =? ', [luid], (error, results1)=>{
+        if (error) {
+            return res.status(500).json({ error: '[POSTDenyUserRoleCheck] Database query error' });
+        }
+        if (results1.length == 0){
+            return res.status(400).json({ error: '[POSTDenyUserRoleExistCheck] User with this ID doesn\'t exist!' });
+        }
+        if (results1[0].role != 'admin'){
+            return res.status(400).json({ error: '[POSTDenyUserRoleEditCheck] You don\t have permission to edit this role!' });
+        }
+    
+         pool.query('SELECT * FROM users WHERE ID=?', [uid], (error, results)=>{
+            if(error){
+                return res.status(500).json({error2: '[POSTDenyUser] Database query error '})
+            }
+
+            if(results.length==0){
+                 return res.status(400).json({error2: '[POSTDenyUserUIDNonexistent] No user exists with this ID '})
+            }
+
+            pool.query('UPDATE users SET is_active=not is_active WHERE ID=?', [uid], (error, results2) =>{
+            if(error){
+                return res.status(500).json({error2: '[POSTDenyUserBan] Database query error '})
+            }
+
+            return res.status(200).json({message: '[POSTUserBanSuccess] User has been banned'})
+            })
+        })
+    })
+
+
+   
+
+
+})
 
 
 
