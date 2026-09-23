@@ -279,10 +279,179 @@ app.delete('/users/:uid', (req, res)=>{
 
 //STEPS ENDPOINTS -------------------------------
 //CREATE step
-//get steps
-//update step
-//delete step
+app.post('/steps/:uid', (req,res)=>{
+    const uid = req.params.uid
+    const {luid, step_count, date} = req.body
+    let currentDate = new Date()
+    if(!uid || !luid || !step_count || !date){
+        return res.status(400).json({error: '[CREATESteps] Missing user params'})
+    }
 
+    if(uid != luid){
+        return res.status(400).json({error: '[CREATEStepsPermissionError] You don\'t have permission to add steps to this user'})
+    }
+    if(step_count <=0){
+        return res.status(400).json({error: '[CREATEStepsStepCountError] You can\'t input steps that are less then or equal to 0'})
+    }/*
+    if(date <=0){
+        return res.status(400).json({error: '[CREATEStepsDateError] You can\'t input date that are less then or equal to 0'})
+    }*/
+    if(new Date(date)>currentDate){
+        return res.status(400).json({error: '[CREATEStepsDateError] You can\'t input date from the future'})
+    }   
+
+
+        pool.query('SELECT * FROM steps WHERE user_id=?', [uid], (error, results)=>{
+        if(error){
+            return res.status(500).json({error: '[INSERTStepsUIDCheckError] Database query error '+error})
+        }
+        if(results.length ==0){
+            return res.status(400).json({error: '[INSERTStepsUIDMissingError] There is no user with this ID in the Database!'})
+        }
+
+            pool.query('SELECT * FROM steps WHERE user_id=? AND date=?', [uid, date], (error2, results2)=>{
+                if(error2){
+                return res.status(500).json({error: '[INSERTStepsDateExistsError] Database query error '+error2})
+                }
+                if(results2.length > 0 && results2[0].date == date){
+                    return res.status(400).json({error: '[CREATEStepsCheckIfExists] This date is already in DB '})
+                }  
+
+
+
+                pool.query('INSERT INTO steps (user_id, step_count, date) VALUES (?,?,?)', [uid, step_count, date], (error, results)=>{
+                if(error){
+                    return res.status(500).json({error: '[INSERTSteps] Database insert error '})
+                }
+                    return res.status(200).json({message: '[INSERTStepsSuccess] Step has been successfully added'})
+                })
+            })
+  })
+
+
+})
+//get steps
+app.get('/steps/:uid', (req, res)=>{
+    const uid = req.params.uid
+    const {luid} = req.body
+    if(!uid || !luid){
+        return res.status(400).json({error: '[CREATESteps] Missing user params'})
+    }
+
+    if(uid != luid){
+        return res.status(400).json({error: '[CREATEStepsPermissionError] You don\'t have permission to access this users\s step data!'})
+    }
+
+    pool.query('SELECT * FROM STEPS WHERE user_id=?', [uid], (error, results)=>{
+        if(error){
+            return res.status(500).json({error: '[GETALLSteps] Database select error '})
+
+        }
+        if(results.length==0){
+            return res.status(400).json({error: '[GETALLStepsError] There is no steps that exists with this ID'})
+        }
+    
+
+
+        //ha van ilyen user a táblában:
+        return res.status(200).json({results: results})
+    })
+})
+
+
+
+//update step
+app.patch('/steps/:uid', (req,res)=>{
+    const uid = req.params.uid
+    const {luid, step_count, date} = req.body
+    let currentDate = new Date()
+    if(!uid || !luid || !step_count || !date){
+        return res.status(400).json({error: '[UPDATESteps] Missing user params'})
+    }
+    //TODO:negative date
+    /*
+    if(date[0]=='-'){
+        date.trim[0]
+    }*/
+    if(uid != luid){
+        return res.status(400).json({error: '[UPDATEStepsPermissionError] You don\'t have permission to delete this user'})
+    }
+    /*if(step_count <=0){
+        return res.status(400).json({error: '[CREATEStepsStepCountError] You can\'t input steps that are less then or equal to 0'})
+    }*/
+    if(date <= new Date('0000-00-00')){
+        return res.status(400).json({error: '[CREATEStepsDateError] You can\'t input date that are less then or equal to 0'})
+    }
+    if(new Date(date)>currentDate){
+        return res.status(400).json({error: '[CREATEStepsDateError] You can\'t input date from the future'})
+    }   
+
+    
+    pool.query('SELECT * FROM STEPS WHERE id=?',[uid], (error, results)=>{
+        if(error){
+            return res.status(500).json({error: '[UPDATEStepsSelectError] Database get error '})
+            
+        }
+        if(results[0].step_count ==step_count && results[0].date == date){
+            return res.status(400).json({error: '[UPDATEStepsCheckError] You didn\'t change any values! '})
+        } 
+         pool.query('SELECT * FROM steps WHERE user_id=? AND date=?', [uid, date], (error2, results2)=>{
+                if(error2){
+                return res.status(500).json({error: '[INSERTStepsDateExistsError] Database query error '+error2})
+                }
+                if(results2.length > 0 && results2[0].date == date){
+                    return res.status(400).json({error: '[CREATEStepsCheckIfExists] This date is already in DB '})
+                }  
+                pool.query('UPDATE steps SET step_count=?, date=?, updated_at=CURRENT_TIMESTAMP WHERE ID=?', [step_count, date, uid], (error, results2)=>{
+                    if(error){
+                        return res.status(500).json({error: '[UPDATESteps] Database insert error '})
+                        
+                    }
+                    return res.status(200).json({message: '[UPDATEStepssSuccess] Step has been successfully modified'})
+                });
+            })
+    })
+})
+//delete step
+app.delete('/steps/:uid/:sid', (req,res)=>{
+    const uid = req.params.uid
+    const sid = req.params.sid
+    const luid = req.body.luid
+    if(!uid || !luid || !sid){
+        return res.status(400).json({error: '[DELETEStep] Missing user params'})
+    }
+
+    if(uid != luid){
+        return res.status(400).json({error: '[DELETEStepPermissionError] You don\'t have permission to delete this step'})
+    }
+
+
+    pool.query('SELECT * FROM STEPS WHERE user_id=?',[uid], (error, results)=>{
+        if(error){
+            return res.status(500).json({error: '[DELETEStepUIDSelectError] Database get error '})
+            
+        }
+        pool.query('SELECT * FROM STEPS WHERE ID=?',[sid], (error, results)=>{
+        if(error){
+            return res.status(500).json({error: '[DELETEStepSIDSelectError] Database get error '})
+            
+        }
+        if(results.length==0){
+            return res.status(400).json({error: '[DELETEStepSIDExistCheck] There is no step with this ID! '})
+        }
+    
+        
+            pool.query('DELETE FROM steps WHERE ID=?', [sid], (error, results2)=>{
+                if(error){
+                    return res.status(500).json({error: '[DELETEStep] Database delete error '})
+                
+                }
+                return res.status(200).json({message: '[DELETEStepsSuccess] Step has been successfully deleted'})
+            });
+        })
+    })
+
+})
 
 //ADMIN ENDPOINTS -------------------------------
 // get all users
