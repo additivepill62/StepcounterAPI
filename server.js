@@ -72,16 +72,16 @@ app.post('/users/register', (req, res) =>{
 //login
 //TODO: időzónák lekezelése
 app.post('/users/login', (req, res) =>{
-    const {email, passwd} = req.body
+    const {email, password} = req.body
     //VALIDATION
 
     //CHECK FOR MISSING FIELDS
-    if (!email || !passwd){
+    if (!email || !password){
         return res.status(400).json({error: '[LOGINFieldError] Missing required fields'})
     }
 
     //LOGIN email+pw check
-    pool.query('SELECT * FROM users WHERE email=? AND password=SHA1(?)', [email, passwd],(error, results)=>{
+    pool.query('SELECT * FROM users WHERE email=? AND password=SHA1(?)', [email, password],(error, results)=>{
         if (error){
             return res.status(500).json({error: '[LOGINEmailPwCheckError] Database query error'+error})
         }
@@ -145,7 +145,7 @@ app.post('/users/:uid/changepassword', (req, res)=>{
 
         const oldpassHash = sha1(oldpass)
 
-        console.log(results[0].passwd == oldpassHash)
+        console.log(results[0].password == oldpassHash)
 
         if(results[0].password != oldpassHash){
             return res.status(400).json({error: '[CHANGEPWOldIncorrect] The old password is not correct ' })
@@ -211,7 +211,7 @@ app.patch('/users/:uid', (req, res)=>{
     }
 
     if(uid != luid){
-        return res.status(400).json({error: '[PATCHUserProfilePermissionError] You don\'t have permission to update this user\'s data'})
+        return res.status(403).json({error: '[PATCHUserProfilePermissionError] You don\'t have permission to update this user\'s data'})
     }
 
     pool.query('SELECT * FROM users WHERE ID=?', [uid], (error, results)=>{
@@ -259,7 +259,7 @@ app.delete('/users/:uid', (req, res)=>{
     }
     if(uid != loggedUserId){
         
-        return res.status(400).json({error: '[DELETEUserProfilePermissionError] You don\'t have permission to delete this user'})
+        return res.status(403).json({error: '[DELETEUserProfilePermissionError] You don\'t have permission to delete this user'})
     
     }
     pool.query('DELETE FROM users WHERE ID=?', [uid], (error, results)=>{
@@ -288,7 +288,7 @@ app.post('/steps/:uid', (req,res)=>{
     }
 
     if(uid != luid){
-        return res.status(400).json({error: '[CREATEStepsPermissionError] You don\'t have permission to add steps to this user'})
+        return res.status(403).json({error: '[CREATEStepsPermissionError] You don\'t have permission to add steps to this user'})
     }
     if(step_count <=0){
         return res.status(400).json({error: '[CREATEStepsStepCountError] You can\'t input steps that are less then or equal to 0'})
@@ -339,7 +339,7 @@ app.get('/steps/:uid', (req, res)=>{
     }
 
     if(uid != luid){
-        return res.status(400).json({error: '[CREATEStepsPermissionError] You don\'t have permission to access this users\s step data!'})
+        return res.status(403).json({error: '[CREATEStepsPermissionError] You don\'t have permission to access this users\s step data!'})
     }
 
     pool.query('SELECT * FROM STEPS WHERE user_id=?', [uid], (error, results)=>{
@@ -374,7 +374,7 @@ app.patch('/steps/:uid', (req,res)=>{
         date.trim[0]
     }*/
     if(uid != luid){
-        return res.status(400).json({error: '[UPDATEStepsPermissionError] You don\'t have permission to delete this user'})
+        return res.status(403).json({error: '[UPDATEStepsPermissionError] You don\'t have permission to delete this user'})
     }
     /*if(step_count <=0){
         return res.status(400).json({error: '[CREATEStepsStepCountError] You can\'t input steps that are less then or equal to 0'})
@@ -422,7 +422,7 @@ app.delete('/steps/:uid/:sid', (req,res)=>{
     }
 
     if(uid != luid){
-        return res.status(400).json({error: '[DELETEStepPermissionError] You don\'t have permission to delete this step'})
+        return res.status(403).json({error: '[DELETEStepPermissionError] You don\'t have permission to delete this step'})
     }
 
 
@@ -470,7 +470,7 @@ app.post('/admin/users', (req, res) =>{
             return res.status(400).json({ error: '[POSTUsersIDNonexistent] User with this ID doesn\'t exist!' });
         }
         if (results1[0].role != 'admin') {
-            return res.status(400).json({ error: '[POSTUsersPermissionDenied] You don\t have permission to change this user status!' });
+            return res.status(403).json({ error: '[POSTUsersPermissionDenied] You don\t have permission to change this user status!' });
         }
         pool.query('SELECT * FROM users', (error, results) => {
         if (error) {
@@ -505,7 +505,7 @@ app.post('/admin/status', (req, res)=>{
             return res.status(400).json({ error: '[POSTDenyUserRoleExistCheck] User with this ID doesn\'t exist!' });
         }
         if (results1[0].role != 'admin'){
-            return res.status(400).json({ error: '[POSTDenyUserRoleEditCheck] You don\t have permission to edit this role!' });
+            return res.status(403).json({ error: '[POSTDenyUserRoleEditCheck] You don\t have permission to edit this role!' });
         }
     
          pool.query('SELECT * FROM users WHERE ID=?', [uid], (error, results)=>{
