@@ -6,6 +6,8 @@ const mysql = require("mysql")
 const app = express();
 const port = 3000
 var sha1 = require('sha1')
+const pwdRegExp = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+ 
 var pool = mysql.createPool({
     connectionLimit: 10,
     host: "localhost",
@@ -39,10 +41,12 @@ app.post('/users/register', (req, res) =>{
 
     //check if pws match
     if(password !==confirm){
-        return res.status(400).json({error: 'Passwords do not match'})
+        return res.status(400).json({error: '[REGISTERPasswordMatch] Passwords do not match'})
     }
     //TODO: check pw strength (with regular expression)
-
+    if(!password.match(pwdRegExp)){
+        return res.status(400).json({error: '[REGISTERRegexError] Password is too weak'})
+    }
 
     //check if email already exists               ˇbehejettesíti az utána lévő tömböt ----- SQL injection!
     pool.query('SELECT * FROM users WHERE email = ?', [email], (error, results) =>{
@@ -117,7 +121,7 @@ app.post('/users/login', (req, res) =>{
 
 //logout - elv nem kell rá endpoint
 
-//pw change
+//changepassword
 app.post('/users/:uid/changepassword', (req, res)=>{
     const {oldpass, newpass, confirm} = req.body
     const uid =req.params.uid
@@ -132,7 +136,9 @@ app.post('/users/:uid/changepassword', (req, res)=>{
     }
 
     //TODO: newpassword strength check with regular expression
-
+    if(!password.match(pwdRegExp)){
+        return res.status(400).json({error: '[REGISTERRegexError] Password is too weak'})
+    }
 
     pool.query('SELECT * FROM users WHERE ID=?', [uid], (error, results)=>{
         if(error){
@@ -357,9 +363,6 @@ app.get('/steps/:uid', (req, res)=>{
         return res.status(200).json({results: results})
     })
 })
-
-
-
 //update step
 app.patch('/steps/:uid', (req,res)=>{
     const uid = req.params.uid
@@ -493,7 +496,7 @@ app.post('/admin/status', (req, res)=>{
     
 
     if(!uid || !luid){
-         return res.status(400).json({error: '[POSTDenyUser] Missing required fields '})
+         return res.status(400).json({error: '[POSTDenyUser] Missing required fields '+error})
     }
 
 
@@ -521,7 +524,7 @@ app.post('/admin/status', (req, res)=>{
             if(error){
                 return res.status(500).json({error2: '[POSTDenyUserBan] Database query error '})
             }
-
+            //TODO: check if user is banned or unbanned (retarded)
             return res.status(200).json({message: '[POSTUserBanSuccess] User has been banned'})
             })
         })
