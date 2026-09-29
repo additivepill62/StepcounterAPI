@@ -11,14 +11,14 @@ const pwdRegExp = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?
 
 //hardcoded sensitive data
 var pool = mysql.createPool({
-    connectionLimit: process.env.DB_CONN_LIMIT,
-    multipleStatements:process.env.DB_MULTI,
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASS,
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME,
-    timezone: process.env.DB_TIMEZONE
+    connectionLimit:    process.env.DB_CONN_LIMIT,
+    multipleStatements: process.env.DB_MULTI,
+    host:               process.env.DB_HOST,
+    user:               process.env.DB_USER,
+    password:           process.env.DB_PASS,
+    port:               process.env.DB_PORT,
+    database:           process.env.DB_NAME,
+    timezone:           process.env.DB_TIMEZONE
 });
 app.use(cors()) //Access-Control-Allow-Origin
 app.use(express.urlencoded({extended: true})) //ettől működik a req.body
@@ -545,9 +545,10 @@ app.post('/admin/stats', (req, res)=>{
             SELECT 
                 users.name,
                 users.email,
-                SUM(steps.step_count) as steps
+                COALESCE(SUM(steps.step_count), 0) AS steps
             FROM users
-            INNER JOIN steps ON users.ID = steps.user_id
+            INNER JOIN steps ON users.id = steps.user_id
+            GROUP BY users.ID, users.name, users.email
             ORDER BY steps DESC
             LIMIT 0,3
         `, (error, results) =>{
