@@ -1,21 +1,24 @@
+require('dotenv').config();
 const express = require("express")
 const cors = require('cors')
 
 
 const mysql = require("mysql")
 const app = express();
-const port = 3000
+const port = process.env.APP_PORT
 var sha1 = require('sha1')
 const pwdRegExp = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
- 
+
+//hardcoded sensitive data
 var pool = mysql.createPool({
-    connectionLimit: 10,
-    host: "localhost",
-    user: "root",
-    password: "",
-    port: 3307,
-    database: "2026_stepcounter",
-    timezone:'Europe/Budapest'
+    connectionLimit: process.env.DB_CONN_LIMIT,
+    multipleStatements:process.env.DB_MULTI,
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    port: process.env.DB_PORT,
+    database: process.env.DB_NAME,
+    timezone: process.env.DB_TIMEZONE
 });
 app.use(cors()) //Access-Control-Allow-Origin
 app.use(express.urlencoded({extended: true})) //ettől működik a req.body
@@ -307,7 +310,7 @@ app.post('/steps/:uid', (req,res)=>{
     }   
 
 
-        pool.query('SELECT * FROM steps WHERE user_id=?', [uid], (error, results)=>{
+        pool.query('SELECT ID FROM users WHERE ID=?', [uid], (error, results)=>{
         if(error){
             return res.status(500).json({error: '[INSERTStepsUIDCheckError] Database query error '+error})
         }
@@ -488,7 +491,78 @@ app.post('/admin/users', (req, res) =>{
 });
 
     
+
+
 //stats
+app.post('/admin/stats', (req, res)=>{
+    const luid = req.body. luid;
+
+    if (!luid) {
+        return res.status(400).json({ error: '[POSTAdminStatsFieldError] Missing required fields!' });
+    }
+
+    pool.query('SELECT * FROM users WHERE ID =? ', [luid], (error, results1) => {
+        if (error) {
+            return res.status(500).json({ error:'[POSTAdminStatsDBIDError] Database query error ' });
+        }
+        if (results1.length == 0) {
+            return res.status(400).json({ error: '[POSTAdminStatsIDNonexistent] User with this ID doesn\'t exist!' });
+        }
+        if (results1[0].role != 'admin') {
+            return res.status(403).json({ error: '[POSTAdminStatsPermissionDenied] You don\t have permission to get statistics!' });
+        }
+
+        //kigyujtjuk a stat adatokat
+        //total steps
+        //avg steps
+        //top 3 users
+
+
+        /*
+        {
+            total:213312,
+            avg: 2131,
+            topusers:[
+            {
+                name:bela,
+                email:bela@bela.com,
+                steps:1322
+            },
+            {
+                name:bela,
+                email:bela@bela.com,
+                steps:1322
+            }
+            ]
+        }
+        
+        */
+        pool.query(`
+            SELECT 
+                COALESCE(SUM(step_count) ,0) as total, 
+                COALESCE(AVG(step_count), 0) as avg 
+            FROM steps;
+            SELECT 
+                users.name,
+                users.email,
+                SUM(steps.step_count) as steps
+            FROM users
+            INNER JOIN steps ON users.ID = steps.user_id
+            ORDER BY steps DESC
+            LIMIT 0,3
+        `, (error, results) =>{
+            if (error) {
+            return res.status(500).json({ error:'[POSTAdminStatsError] Database query error ' + error});
+            }
+            console.log(results)
+            return res.status(200).json(results)
+        })
+    })
+})
+
+
+
+
 //deny user
 app.post('/admin/status', (req, res)=>{
     const {uid, luid} = req.body
