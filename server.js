@@ -340,7 +340,7 @@ app.post('/steps/:uid', (req,res)=>{
 
 })
 //get steps
-app.get('/steps/:uid', (req, res)=>{
+app.post('/steps/:uid/steps', (req, res)=>{
     const uid = req.params.uid
     const {luid} = req.body
     if(!uid || !luid){
@@ -357,7 +357,7 @@ app.get('/steps/:uid', (req, res)=>{
 
         }
         if(results.length==0){
-            return res.status(400).json({error: '[GETALLStepsError] There is no steps that exists with this ID'})
+            return res.status(400).json({error: '[GETALLStepsError] There is no steps that exists with this ID '})
         }
     
 
@@ -511,32 +511,6 @@ app.post('/admin/stats', (req, res)=>{
         if (results1[0].role != 'admin') {
             return res.status(403).json({ error: '[POSTAdminStatsPermissionDenied] You don\t have permission to get statistics!' });
         }
-
-        //kigyujtjuk a stat adatokat
-        //total steps
-        //avg steps
-        //top 3 users
-
-
-        /*
-        {
-            total:213312,
-            avg: 2131,
-            topusers:[
-            {
-                name:bela,
-                email:bela@bela.com,
-                steps:1322
-            },
-            {
-                name:bela,
-                email:bela@bela.com,
-                steps:1322
-            }
-            ]
-        }
-        
-        */
         pool.query(`
             SELECT 
                 COALESCE(SUM(step_count) ,0) as total, 
@@ -559,6 +533,7 @@ app.post('/admin/stats', (req, res)=>{
             return res.status(200).json(results)
         })
     })
+
 })
 
 
@@ -600,7 +575,7 @@ app.post('/admin/status', (req, res)=>{
                 return res.status(500).json({error2: '[POSTDenyUserBan] Database query error '})
             }
             //TODO: check if user is banned or unbanned (retarded)
-            return res.status(200).json({message: '[POSTUserBanSuccess] User has been banned'})
+            return res.status(200).json({message: '[POSTUserBanStatusChange] User status changed'})
             })
         })
     })
