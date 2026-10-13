@@ -1,0 +1,44 @@
+### reg new user
+POST http://localhost:3000/users/register
+Content-Type: application/json
+
+{
+    "name":"Danika",
+    "email":"darsz2007@gmail.com",
+    "password":"AztOlvasdEl1@",
+    "confirm":"AztOlvasdEl1@"
+}
+### login user
+POST http://localhost:3000/users/login
+Content-Type: application/json
+
+{
+    "email":"darsz2007@gmail.com",
+    "password":"AztOlvasdEl1@"
+}
+###changepw
+POST http://localhost:3000/users/55/changepassword
+Content-Type: application/json
+
+{
+    "oldpass":"AztOlvasdEl1@",
+    "newpass":"AztNeOlvasdEl1@",
+    "confirm":"AztNeOlvasdEl1@"
+}
+###del profile
+DELETE http://localhost:3000/users/56
+Content-Type: application/json
+
+{
+    "luid":56
+}
+
+###update user
+PATCH http://localhost:3000/users/55
+Content-Type: application/json
+
+{
+    "username":"Chicken Nugget Destroyer",
+    "email":"darsz2007@gmail.com",
+    "luid":55
+}

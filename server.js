@@ -139,7 +139,7 @@ app.post('/users/:uid/changepassword', (req, res)=>{
     }
 
     //TODO: newpassword strength check with regular expression
-    if(!password.match(pwdRegExp)){
+    if(!newpass.match(pwdRegExp)){
         return res.status(400).json({error: '[REGISTERRegexError] Password is too weak'})
     }
 

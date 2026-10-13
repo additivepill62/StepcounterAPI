@@ -1,0 +1,33 @@
+### get step
+POST http://localhost:3000/steps/6/steps
+Content-Type: application/json
+
+{
+    "luid":6
+}
+
+###create step
+POST http://localhost:3000/steps/52
+Content-Type: application/json
+
+{
+    "step_count":54126,
+    "date":"2025-05-31",
+    "luid":52
+}
+###del step
+DELETE http://localhost:3000/steps/52/25
+Content-Type: application/json
+
+{
+    "luid":52
+}
+###update step
+PATCH http://localhost:3000/steps/52
+Content-Type: application/json
+
+{
+    "step_count":5412,
+    "date":"2025-05-30",
+    "luid":52
+}

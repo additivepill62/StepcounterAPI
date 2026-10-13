@@ -1,0 +1,24 @@
+###get all users
+POST http://localhost:3000/admin/users
+Content-Type: application/json
+
+{
+    "luid":1
+}
+
+### change user status
+PATCH http://localhost:3000/admin/status
+Content-Type: application/json
+
+{
+    "luid":1,
+    "uid":7
+}
+
+###get user stats
+POST http://localhost:3000/admin/stats
+Content-Type: application/json
+
+{
+    "luid":1
+}
